@@ -120,12 +120,11 @@ def forage_storage(N, D, lb, ub, T, pa1, mu, tau1, tau2, tau3, levy_flight=lambd
             # Update the population and check for new best position
             initial_positions[i] = new_positions
             xbest = np.minimum(xbest, new_positions)
-
     return xbest
 
 
 
-def cache_recovery(N, D, lb, ub, Tmax, gamma, mu, r1, r2, delta, RP_matrix):
+def cache_recovery(N, D, lb, ub, Tmax, gamma, mu, tau7, tau8, delta, RP_matrix):
     """
     Second stage of NOA - Cache-search and recovery strategy
 
@@ -155,36 +154,81 @@ def cache_recovery(N, D, lb, ub, Tmax, gamma, mu, r1, r2, delta, RP_matrix):
 
         for i in range(N):  # For each nutcracker
             phi = np.random.randint(0, 2)
-            if phi > pa2:# Exploration phase 2
-            # Cache-search stage
-            if r1 < delta:  # Explore using the first reference point
-                for j in range(D):  # For each dimension
+            if phi > pa2: # Exploration phase 2
 
-                    # Eq. (13)
-                    if r3 < r4:  
-                        new_positions[i][j] = initial_positions[i][j]
-                    else:
-                        new_positions[i][j] = initial_positions[i][j] + r1 * (xbest[j] - initial_positions[i][j]) + r2 * (RP_matrix[i][j] - initial_positions[i][j])
+                # Cache-search stage
+                if tau7 < tau8:  # The nutcracker remembers the hidden cache position
+                    for j in range(D):  # For each dimension
+                    # Eq. (16)
+                        # Eq. (13)
+                        if r3 < r4:  
+                            new_positions[i][j] = initial_positions[i][j]
+                        else:
+                            new_positions[i][j] = initial_positions[i][j] + r1 * (xbest[j] - initial_positions[i][j]) + r2 * (RP_matrix[i][j] - initial_positions[i][j])
 
-            else:  # Use the second reference point if the first cache is not found
-                for j in range(D):  # For each dimension
+                else:  # The nutcracker forgets the hidden cache position
+                    for j in range(D):  # For each dimension
+                        # Eq. (15)
+                        if r5 < r6:  
+                            new_positions[i][j] = initial_positions[i][j]
+                        else:
+                            new_positions[i][j] = initial_positions[i][j] + r1 * (xbest[j] - initial_positions[i][j]) + r2 * (RP_matrix[i][j+D] - initial_positions[i][j])
 
-                    # Eq. (15)
-                    if r5 < r6:  
-                        new_positions[i][j] = initial_positions[i][j]
-                    else:
-                        new_positions[i][j] = initial_positions[i][j] + r1 * (xbest[j] - initial_positions[i][j]) + r2 * (RP_matrix[i][j+D] - initial_positions[i][j])
+                new_positions = np.clip(new_positions, lb, ub) # Border check
 
-        # Ensure positions stay within bounds
-        new_positions = np.clip(new_positions, lb, ub)
-
-        # Exploitation phase (recovery)
-        # Evaluate new positions and update xbest if necessary
-        # This step depends on your specific evaluation function and stopping criteria
-        # You can use an external function like evaluate_fitness() to calculate the fitness of each individual
-        # and then compare it against xbest's fitness to decide whether to update xbest
+            else: # Exploitation phase 2
+                pass
+                # Evaluate new positions and update xbest if necessary
+                # This step depends on your specific evaluation function and stopping criteria
+                # You can use an external function like evaluate_fitness() to calculate the fitness of each individual
+                # and then compare it against xbest's fitness to decide whether to update xbest
+                # Ensure positions stay within bounds
 
         # Update the population with new positions
         initial_positions = new_positions
-
+        xbest = np.minimum(xbest, new_positions)
     return xbest
+
+def nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta, RP_matrix):
+
+    """
+    Full Nutcracker Optimization Algorithm (NOA) process integrating both foraging-storage and cache-search-recovery strategies.
+
+    Args:
+        N, D, lb, ub (int, int, numpy.ndarray, numpy.ndarray): Same as previous definitions.
+        T (int): Evaluation times for the foraging-storage strategy.
+        Tmax (int): Maximum number of generations for the entire process.
+        pa1 (float): Probability threshold for switching between exploration and exploitation in the first strategy.
+        mu, tau1, tau2, tau3 (float): Control parameters for the first strategy.
+        delta (float): Threshold for exploration decision in the second strategy.
+        RP_matrix (numpy.ndarray): Matrix of reference points for the cache-search strategy.
+
+    Returns:
+        xbest_final (numpy.ndarray): The best position found after the entire NOA process.
+    """
+
+
+    # Stage 1: Forage and Storage Strategy
+    xbest_after_forage = forage_storage(N, D, lb, ub, T, pa1, mu, tau1, tau2, tau3)
+
+
+    # Stage 2: Cache-search and Recovery Strategy
+    # Reset population for the second stage or reuse positions from the first stage based on strategy
+    # For simplicity, we assume initializing a new population for the second stage
+    initial_positions_for_recovery = initialize_population(N, D, lb, ub)
+    xbest_final = cache_recovery(N, D, lb, ub, Tmax, mu, tau1, tau2, delta, RP_matrix)
+
+    # Return the best solution found across both stages
+    # Note: Depending on the specific implementation details, you might want to compare solutions from both stages
+    return np.minimum(xbest_after_forage, xbest_final)
+
+
+# Example usage:
+
+# N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta = ... # Define your parameters here
+
+# RP_matrix = ... # Define your reference points matrix here
+
+# best_solution = nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta, RP_matrix)
+
+# print("Best solution found:", best_solution)
