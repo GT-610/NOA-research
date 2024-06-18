@@ -1,10 +1,10 @@
-from NOA import nutcracker_optimizer
+from NOA_cupy import nutcracker_optimizer
 import opfunu
-import numpy as np
+import cupy as cp
 import os
 
 # Controlling parameters
-N = 50 # Number of nutcrackers
+N = 30 # Number of nutcrackers
 T = 500 # Evaluation times
 delta = 0.05 # The percent of attempts at avoiding local optima
 Pa2 = 0.2 # The probability of exchanging between the cache-search stage and the recovery stage
@@ -16,7 +16,7 @@ cec_year = 2014 # Run which CEC function
 
 # Function number, from 1 to 30
 # Specify a list to select which functions to run
-func_ids=[1]
+func_ids=range(1,31)
 
 
 # 运行 NOA 并保存结果
@@ -25,12 +25,12 @@ def run_and_save_results(func_num, fobj, lb, ub, dim, num_runs):
     all_runs_final_best = []
     for i in range(1,num_runs+1):
         print(f'{func_num} 第 {i} 次开始')
-        X_best, f_best, f_best_per_gen = nutcracker_optimizer(N, D, lb, ub, T, delta, Prp, fobj)
+        X_best, f_best, f_best_per_gen = nutcracker_optimizer(N, dim, lb, ub, T, delta, Prp, fobj)
         all_runs_best_per_gen.append(f_best_per_gen)
         all_runs_final_best.append(f_best_per_gen[-1])  # 添加每次运行的最后结果
 
     # 计算每代的平均最优值
-    avg_best_per_gen = np.mean(all_runs_best_per_gen, axis=0)
+    avg_best_per_gen = cp.mean(all_runs_best_per_gen, axis=0)
 
     # If "results/" does not exist, create it
     if not os.path.exists("results"):
@@ -49,7 +49,7 @@ def run_and_save_results(func_num, fobj, lb, ub, dim, num_runs):
 
 # 定义测试函数 ftest
 def ftest(x):
-    return np.sum(x ** 2)
+    return cp.sum(x ** 2)
 
 # 定义的 cec 函数
 def cec_fun(x):
@@ -64,8 +64,8 @@ if __name__ == '__main__':
 
     # For functions in CEC2014, these are fixed
     D = 30
-    lb = -100 * np.ones(D)
-    ub = 100 * np.ones(D)
+    lb = -100 * cp.ones(D)
+    ub = 100 * cp.ones(D)
     
 
     for func_id in func_ids:

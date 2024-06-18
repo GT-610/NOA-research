@@ -1,5 +1,5 @@
 import random
-import numpy as np
+import cupy as cp
 from levy import levy
 
 def initialize_population(N, D, lb, ub): # Tested OK
@@ -17,7 +17,7 @@ def initialize_population(N, D, lb, ub): # Tested OK
 
     # Using Eq. (19)
     # Generate a random matrix for each individual with dimensions (N, D)
-    rm = np.random.rand(N, D)
+    rm = cp.random.rand(N, D)
     
     # Calculate the scaled positions using Eq.(19)
     initial_positions = lb + (ub - lb) * (1 - rm)
@@ -42,13 +42,13 @@ exploring other regions within the search space.
 
     # --- Initialize ---
     positions = initialize_population(N, D, lb, ub) # Generate N numbers of nutcracker
-    xbest = np.min(positions, axis=0)# Best nutcracker position (solution)
-    best_fit=np.inf # Best fitness
-    lfit=np.inf * np.ones(N) # Local-best fitness for each Nutcracker
+    xbest = cp.min(positions, axis=0)# Best nutcracker position (solution)
+    best_fit=cp.inf # Best fitness
+    lfit=cp.inf * cp.ones(N) # Local-best fitness for each Nutcracker
     lbest = positions # Local-best solution for each Nutcracker as its current position at the beginning
     # 2D matrix to include two reference points
-    RP=np.zeros((2,D))
-    fit = np.inf * np.ones(N) # Current fitness of every nutcracker
+    RP=cp.zeros((2,D))
+    fit = cp.inf * cp.ones(N) # Current fitness of every nutcracker
 
     # --- Evaluate ---
     for i in range(0,N):
@@ -61,64 +61,63 @@ exploring other regions within the search space.
             xbest = positions[i]
 
     # Store every best fitness of each evolution
-    best_fit_per_gen = np.zeros(T)
+    best_fit_per_gen = cp.zeros(T)
 
     # --- Begin ---
     for t in range(1,T+1):
 
         RL = 0.05*levy(N,D,1.5) # Levy flight
         # Parameter in Eq.(3)
-        l = np.random.rand()*(1-t/T)
+        l = cp.random.rand()*(1-t/T)
         # Paramater in Eq. (11)
-        if np.random.rand()>np.random.rand():
+        if cp.random.rand()>cp.random.rand():
             alpha = (1-t/T)**(2*1/t)
         else:
             alpha = (t/T)**(2/t)
         
         # Stage 1: Forage and Storage Strategy 
-        if np.random.rand() < np.random.rand(): # sigma < sigma1
+        if cp.random.rand() < cp.random.rand(): # sigma < sigma1
 
             for i in range(0,N): # For every nutcracker
                 # Calculate mu based on Eq. (2)
-                if np.random.rand() < np.random.rand(): # r1 < r2
-                    mu = np.random.rand() # tau3
-                elif np.random.rand() < np.random.rand(): # r2 < r3 
-                    mu = np.random.randn() # tau4
+                if cp.random.rand() < cp.random.rand(): # r1 < r2
+                    mu = cp.random.rand() # tau3
+                elif cp.random.rand() < cp.random.rand(): # r2 < r3 
+                    mu = cp.random.randn() # tau4
                 else:
                     mu = RL[0][0] # Levy flight
 
-                A, B, C = np.random.choice(N, 3, replace=False)
+                A, B, C = cp.random.choice(N, 3, replace=False)
                 pa1 = ((T-t))/T
 
-                if np.random.rand() < pa1: # Exploration phase 1. phi < pa1 FIXME
-                    r = np.random.rand()
+                if cp.random.rand() < pa1: # Exploration phase 1. phi < pa1 FIXME
+                    r = cp.random.rand()
 
                     for j in range(0,D): # For every dimension
-                        Xm_j = np.mean(positions[:, j])
+                        Xm_j = cp.mean(positions[:, j])
 
                         # Eq. (1)
-                        if np.random.rand() >= np.random.rand(): # tau1 >= tau2
+                        if cp.random.rand() >= cp.random.rand(): # tau1 > tau2
                             if t<=T/2.0: # Global exploration
                                 positions[i][j] = Xm_j + RL[i][j] * (positions[A][j] - positions[B][j]) + mu * (r**2 * ub[j] - lb[j])
                     
                             else: # Explore around a random solution with probability δ
-                                positions[i][j] = positions[C][j] + mu * (positions[A][j] - positions[B][j]) + mu * (np.random.rand() < delta) * (r**2 * ub[j] - lb[j])  # Local exploration around a chosen solution
+                                positions[i][j] = positions[C][j] + mu * (positions[A][j] - positions[B][j]) + mu * (cp.random.rand() < delta) * (r**2 * ub[j] - lb[j])  # Local exploration around a chosen solution
                     
                 else: # Exploitation phase 1
-                    for j in range(0,D):
-                        # Following Eq.(3)
-                        if np.random.rand() < np.random.rand(): # tau1 < tau2
-                            positions[i][j] = positions[i][j] + mu * (xbest[j] - positions[i][j]) * abs(RL[i][j]) + np.random.rand() * (positions[A][j]-positions[B][j])
-                        elif np.random.rand() < np.random.rand(): # tau1 < tau3 
-                            positions[i][j] = xbest[j] + mu * (positions[A][j]-positions[B][j])
-                        else:
-                            positions[i][j] = xbest[j] * l
+                    # Following Eq.(3)
+                    if cp.random.rand() < cp.random.rand(): # tau1 < tau2
+                        positions[i][j] = positions[i][j] + mu * (xbest[j] - positions[i][j]) * abs(RL[i][j]) + cp.random.rand() * (positions[A][j]-positions[B][j])
+                    elif cp.random.rand() < cp.random.rand(): # tau1 < tau3 
+                        positions[i][j] = xbest[j] + mu * (positions[A][j]-positions[B][j])
+                    else:
+                        positions[i][j] = xbest[j] * l
 
                 # Border check for nutcrackers
-                if np.random.rand() < np.random.rand():
+                if cp.random.rand() < cp.random.rand():
                     for j in range(0,D):
                         if positions[i][j]>ub[j] or positions[i][j]<lb[j]:
-                            positions[i][j] = lb[j]+np.random.rand() * (ub[j]-lb[j])
+                            positions[i][j] = lb[j]+cp.random.rand() * (ub[j]-lb[j])
 
                 fit[i] = fobj(positions[i])
 
@@ -139,48 +138,48 @@ exploring other regions within the search space.
             # Stage 2: Cache-search and Recovery Strategy
             # Generate RPs for each nutcracker
             for i in range(N):
-                theta = np.pi * np.random.rand()
-                A, B = np.random.choice(N, 2, replace=False)
+                theta = cp.pi * cp.random.rand()
+                A, B = cp.random.choice(N, 2, replace=False)
                 for j in range(0,D):
                     # The first RP, following Eq. (9)
-                    if theta != np.pi / 2:
-                        RP[0][j] = positions[i][j] + (alpha * np.cos(theta) * (positions[A][j]-positions[B][j]))
+                    if theta != cp.pi / 2:
+                        RP[0][j] = positions[i][j] + (alpha * cp.cos(theta) * (positions[A][j]-positions[B][j]))
                     else:
-                        RP[0][j] = positions[i][j] + (alpha * np.cos(theta) * (positions[A][j]-positions[B[j]])) + alpha * RP[np.random.randint(2)][j]
+                        RP[0][j] = positions[i][j] + (alpha * cp.cos(theta) * (positions[A][j]-positions[B[j]])) + alpha * RP[cp.random.randint(2)][j]
                     
                     # The second RP, following Eq. (10)
-                    if theta != np.pi / 2:
-                        RP[1][j] = positions[i][j] + (alpha * np.cos(theta) * ((ub[j] - lb[j]) * np.random.rand() + lb[j])) * (np.random.rand() < Prp) # No definations for U2; Might be U1 in the article
+                    if theta != cp.pi / 2:
+                        RP[1][j] = positions[i][j] + (alpha * cp.cos(theta) * ((ub[j] - lb[j]) * cp.random.rand() + lb[j])) * (cp.random.rand() < Prp) # No definations for U2; Might be U1 in the article
                     else:
-                        RP[1][j] = positions[i][j] + (alpha * np.cos(theta) * ((ub[j] - lb[j]) * np.random.rand() + lb[j]) + alpha * RP[np.random.randint(2)][j]) * (np.random.rand() < Prp)
+                        RP[1][j] = positions[i][j] + (alpha * cp.cos(theta) * ((ub[j] - lb[j]) * cp.random.rand() + lb[j]) + alpha * RP[cp.random.randint(2)][j]) * (cp.random.rand() < Prp)
                 
                 # Exceed RP return
                 for k in range(0,2):
-                    if np.random.rand() < np.random.rand():
+                    if cp.random.rand() < cp.random.rand():
                         for j in range(0,D):
                             if RP[k][j]>ub[j] or RP[k][j]<lb[j]:
-                                RP[k][j]=lb[j]+np.random.rand()*(ub[j]-lb[j])
+                                RP[k][j]=lb[j]+cp.random.rand()*(ub[j]-lb[j])
 
                 pa2 = 0.2 # This value was established from the experiments conducted later. DO NOT CHANGE
-                if np.random.rand() > pa2: # Exploration phase 2 (cache-search)
+                if cp.random.rand() > pa2: # Exploration phase 2 (cache-search)
                     # Eq. (16)
-                    C = np.random.choice(N)
-                    if np.random.rand() < np.random.rand(): # tau7 >= tau8
+                    C = cp.random.choice(N,size=1)[0]
+                    if cp.random.rand() < cp.random.rand(): # tau7 >= tau8
                         # Eq. (13)
                         for j in range(0,D):
-                            if np.random.rand() >= np.random.rand(): #tau3 >= tau4
-                                positions[i][j] = positions[i][j] + np.random.rand() * (xbest[j] - positions[i][j]) + np.random.rand() * (RP[0][j] - positions[C][j])
+                            if cp.random.rand() >= cp.random.rand(): #tau3 >= tau4
+                                positions[i][j] = positions[i][j] + cp.random.rand() * (xbest[j] - positions[i][j]) + cp.random.rand() * (RP[0][j] - positions[C][j])
                     else:
                         # Eq. (15)
                         for j in range(0,D):
-                            if np.random.rand() >= np.random.rand(): # tau5 >= tau6
-                                positions[i][j] = positions[i][j] + np.random.rand() * (xbest[j] - positions[i][j]) + np.random.rand() * (RP[1][j] - positions[C][j])
+                            if cp.random.rand() >= cp.random.rand(): # tau5 >= tau6
+                                positions[i][j] = positions[i][j] + cp.random.rand() * (xbest[j] - positions[i][j]) + cp.random.rand() * (RP[1][j] - positions[C][j])
                         
                     # Border check for nutcrackers
-                    if np.random.rand() < np.random.rand():
+                    if cp.random.rand() < cp.random.rand():
                         for j in range(0,D):
                             if positions[i][j]>ub[j] or positions[i][j]<lb[j]:
-                                positions[i][j] = lb[j]+np.random.rand() * (ub[j]-lb[j])
+                                positions[i][j] = lb[j]+cp.random.rand() * (ub[j]-lb[j])
 
                     # Evaluate for one nutcracker
                     fit[i]=fobj(positions[i])
@@ -195,7 +194,7 @@ exploring other regions within the search space.
                     if fit0 < fit1 and fit0 < fit[i]:
                         positions[i] = RP[0]
                         fit[i] = fit0
-                    elif fit1 <= fit0 and fit1 < fit[i]:
+                    elif fit1 < fit0 and fit1 < fit[i]:
                         positions[i] = RP[1]
                         fit[i] = fit1
 

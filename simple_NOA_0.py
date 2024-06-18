@@ -121,8 +121,8 @@ def run_and_save_results(func_num, func, lb, ub, dim, num_runs):
 
 # 主程序入口
 if __name__ == '__main__':
-    num_runs = 5
-    if_cec = 1
+    num_runs = 1
+    if_cec = 0
     if if_cec:
         for i in range(1, 31):
             fun_name = 'F' + f'{i}'
