@@ -23,93 +23,7 @@ def initialize_population(N, D, lb, ub): # Tested OK
     
     return initial_positions
 
-def cache_recovery(N, D, lb, ub, Tmax, gamma, mu, tau7, tau8, delta, RP_matrix):
-    """
-    Second stage of NOA - Cache-search and recovery strategy
-
-    Args:
-        N (int): Number of nutcrackers in the population.
-        D (int): Number of dimensions in the search space.
-        lb (numpy.ndarray): Lower bounds for each dimension.
-        ub (numpy.ndarray): Upper bounds for each dimension.
-        Tmax (int): Maximum number of generations.
-        gamma, mu (float): Control parameters for updating nutcracker positions.
-        r1, r2 (float): Random numbers for strategy decisions.
-        delta (float): Threshold for exploration decision.
-        RP_matrix (numpy.ndarray): Matrix of reference points for each cache.
-
-    Returns:
-        xbest (numpy.ndarray): The best position found after the recovery phase.
-    """
-
-    # Begin evolving
-    new_positions = np.zeros((N, D))
-    pa2 = 0.2 # This value was established from the experiments conducted later. DO NOT CHANGE
-
-    for i in range(N):  # For each nutcracker
-        phi = np.random.randint(0, 2)
-        if phi > pa2: # Exploration phase 2
-
-            # Cache-search stage
-            if tau7 < tau8:  # The nutcracker remembers the hidden cache position
-                for j in range(D):  # For each dimension
-                # Eq. (16)
-                    # Eq. (13)
-                    if r3 < r4:  
-                        new_positions[i][j] = initial_positions[i][j]
-                    else:
-                        new_positions[i][j] = initial_positions[i][j] + r1 * (xbest[j] - initial_positions[i][j]) + r2 * (RP_matrix[i][j] - initial_positions[i][j])
-
-            else:  # The nutcracker forgets the hidden cache position
-                for j in range(D):  # For each dimension
-                    # Eq. (15)
-                    if r5 < r6:  
-                        new_positions[i][j] = initial_positions[i][j]
-                    else:
-                        new_positions[i][j] = initial_positions[i][j] + r1 * (xbest[j] - initial_positions[i][j]) + r2 * (RP_matrix[i][j+D] - initial_positions[i][j])
-
-            new_positions = np.clip(new_positions, lb, ub) # Border check
-
-
-        else: # Exploitation phase 2
-            for j in range(D):
-
-            # Introduce a local exploitation mechanism
-                r1 = np.random.rand()
-                r2 = np.random.rand()
-
-            # If the random value r1 is less than a certain threshold (e.g., delta), perform a local search around xbest
-                if r1 < delta:
-                    # Use a combination of the global best and a local perturbation
-                       new_positions[i][j] = xbest[j] + mu * (r2 * (ub[j] - lb[j]))  # Local perturbation with control parameter mu
-
-                else:
-                    # Otherwise, rely on the cache memory (RP_matrix) but with a higher focus on the best solution
-                    if tau7 < tau8:  # Favoring remembered cache positions
-                        new_positions[i][j] = xbest[j] + r1 * (RP_matrix[i][j] - xbest[j])  # Bias towards known good positions
-
-                    else:  # If Pa1cache memory isn't favorable, explore more conservatively
-                        new_positions[i][j] = xbest[j] + mu * ((RP_matrix[i][j] + RP_matrix[i][j+D])/2 - xbest[j])  # Average of both RPs for保守探索
-
-            # Ensure the positions stay within the defined boundaries
-            new_positions[Pa1i] = np.clip(new_positions[i], lb, ub)
-
-        # After updating positions for all nutcrackers, evaluate their fitness
-        # Assuming a function evaluate_fitness is defined elsewhere
-        fitness_scores = evaluate_fitness(new_positions)
-
-        # Update the global best solution
-        best_fitness_idx = np.argmax(fitness_scores) if maximizing_problem else np.argmin(fitness_scores)
-        xbest = new_positions[best_fitness_idx]
-        
-        # Update the population with the new positions
-        initial_positions = np.copy(new_positions)             
-        xbest = np.minimum(xbest, new_positions)
-    return xbest
-
-
-
-def nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta, RP_matrix):
+def nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, delta, Prp):
 
     """
     Full Nutcracker Optimization Algorithm (NOA) process integrating both foraging-storage and cache-search-recovery strategies.
@@ -119,21 +33,34 @@ def nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta
         T (int): Evaluation times for the foraging-storage strategy.
         Tmax (int): Maximum number of generations for the entire process.
         pa1 (float): Probability threshold for switching between exploration and exploitation in the first strategy.
-        mu, tau1, tau2, tau3 (float): Control parameters for the first strategy.
         delta (float): Threshold for exploration decision in the second strategy.
-        RP_matrix (numpy.ndarray): Matrix of reference points for the cache-search strategy.
+        Prp (int) : a probability employed to determine the percentage of globally
+exploring other regions within the search space.
 
     Returns:
         xbest_final (numpy.ndarray): The best position found after the entire NOA process.
     """
 
-    # Initialize
+    # --- Initialize ---
     positions = initialize_population(N, D, lb, ub) # Generate N numbers of nutcracker
-    # Initialize the best position
-    # At the beginning of the algorithm, the current position of each Nutcracker (i.e., search agent) is set to its respective local best solution (Lbest).
-    # This means that the starting position of each individual is considered to be its current best solution.
-    xbest = np.min(positions, axis=0)
+    
+    xbest = np.min(positions, axis=0)# best position
+    best_fit=np.inf # Solution
+    lbest=np.ones(N,1) # Local-best position
+    # 2D matrix to include two reference points
+    RP=np.zeros(2,D)
 
+    # --- Evaluate ---
+    for i in range(0,N):
+        fit[i]=feval(fhd, positions[i],fobj)
+        lbest[i]=fit[i] # Set the local best score for the ith Nutcracker as its current score
+
+        # Update the best score
+        if fit[i]<best_fit:
+            best_fit=fit[i]
+            xbest = positions[i]
+
+    # --- Begin ---
     for t in range(0,T):
 
         RL = 0.05*levy(N,dim,1.5) # Levy flight
@@ -145,8 +72,6 @@ def nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta
         else:
             alpha = (t/T)**(2/t)
         
-
-
         # Stage 1: Forage and Storage Strategy 
         if np.random.rand() < np.random.rand(): # sigma < sigma1
 
@@ -168,12 +93,12 @@ def nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta
                         Xm_j = np.mean(positions[:, j])
                         if np.random.rand() >= np.random.rand():
                             if t<=T/2.0: # Global exploration
-                                positions[i][j] = Xm_j + RL[i][j] * (initial_positions[A][j] - initial_positions[B][j]) + mu * (r**2 * ub - lb)
+                                positions[i][j] = Xm_j + RL[i][j] * (initial_positions[A][j] - initial_positions[B][j]) + mu * (r**2 * ub[j] - lb[j])
                     
                             else: # Explore around a random solution with probability δ
                                 positions[i][j] = positions[C][j] + mu * (np.random.rand() < delta) * (initial_positions[A][j] - initial_positions[B][j])  # Local exploration around a chosen solution
                     
-                    else: # Exploitation phase 1 (storage)
+                    else: 
                         # Following Eq.(3)
                         if np.random.rand() < np.random.rand(): # tau1 < tau2
                             positions[i][j] = positions[i][j] + mu * (xbest[j] - positions[i][j]) * abs(RL[i][j]) + r1 * (positions[A][j]-positions[B][j])
@@ -186,13 +111,94 @@ def nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta
 
         else:
             # Stage 2: Cache-search and Recovery Strategy
+            # Generate RPs for each nutcracker
+            for i in range(N):
+                theta = np.pi * np.random.rand()
+                A, B = np.random.choice(N, 2, replace=False)
+                for j in range(0,D):
+                    # The first RP, following Eq. (9)
+                    if theta != np.pi / 2:
+                        RP[0][j] = positions[i][j] + (alpha * np.cos(theta) * (positions[A][j]-positions[B[j]]))
+                    else:
+                        RP[0][j] = positions[i][j] + (alpha * np.cos(theta) * (positions[A][j]-positions[B[j]])) + alpha * RP[np.random.randint(2)][j]
+                    
+                    # The second RP, following Eq. (10)
+                    if theta != np.pi / 2:
+                        RP[1][j] = positions[i][j] + (alpha * np.cos(theta) * ((ub[j] - lb[j]) * np.random.rand() + lb[j])) * (np.random.rand() < Prp) # No definations for U2; Might be U1 in the article
+                    else:
+                        RP[1][j] = positions[i][j] + (alpha * np.cos(theta) * ((ub[j] - lb[j]) * np.random.rand() + lb[j]) + alpha * RP[np.random.randint(2)][j]) * (np.random.rand() < Prp)
+                
+                # Exceed RP return
+                for k in range(0,2):
+                    if np.random.rand() < np.random.rand():
+                        for j in (0,D):
+                            if RP[k][j]>ub[j] or RP[k][j]<lb[j]:
+                                RP[k][j]=lb[j]+np.random.rand()*(ub[j]-lb[j])
 
-            initial_positions_for_recovery = initialize_population(N, D, lb, ub)
-            xbest_final = cache_recovery(N, D, lb, ub, Tmax, mu, tau1, tau2, delta, RP_matrix)
+                pa2 = 0.2 # This value was established from the experiments conducted later. DO NOT CHANGE
+                if np.random.randint(0, 2) > pa2: # Exploration phase 2 (cache-search)
+                    # Eq. (16)
+                    C = np.random.choice(N)
+                    if np.random.rand() < np.random.rand(): # tau7 >= tau8
+                        # Eq. (13)
+                        for j in range(0,D):
+                            if np.random.rand() >= np.random.rand(): #tau3 >= tau4
+                                positions[i][j] = positions[i][j] + np.random.rand() * (xbest[j] - positions[i][j]) + np.random.rand() * (RP[0][j] - positions[C][j])
+                    else:
+                        # Eq. (15)
+                        for j in range(0,D):
+                            if np.random.rand() >= np.random.rand(): # tau5 >= tau6
+                                positions[i][j] = positions[i][j] + np.random.rand() * (xbest[j] - positions[i][j]) + np.random.rand() * (RP[1][j] - positions[C][j])
+                        
+                    # Border check for nutcrackers
+                    if np.random.rand() < np.random.rand():
+                        for j in range(0,D):
+                            if positions[i][j]>ub[j] or positions[i][j]<lb[j]:
+                                positions[i][j] = lb[j]+np.random.rand() * (ub[j]-lb[j])
 
-    # Return the best solution found across both stages
-    # Note: Depending on the specific implementation details, you might want to compare solutions from both stages
-    return np.minimum(xbest_after_forage, xbest_final)
+                    # Evaluate for one nutcracker
+                    fit[i]=feval(fhd, positions[i],fobj)
+
+                    # Update local best
+                    if fit[i]<lbest[i]: # Change this to > for calculating maximization
+                        lbest[i] = positions[i]
+                    else:
+                        fit[i]=lbest[i]
+                        positions[i] = lbest[i]
+
+                    # Update global best
+                    if fit[i] < best_fit:
+                        best_fit = fit[i]
+                        xbest - positions[i]
+
+                else: # Exploitation phase 2 (recovery)
+                    # Evaluation
+                    fit0 = feval(fhd,RP[0],fobj)
+                    fit1 = feval(fhd,RP[1],fobj)
+
+                    # Judge which RP is closer to the cache
+                    # Eq. (17)
+                    if fit0 < fit1 and fit0 < fit[i]:
+                        positions[i] = RP[0]
+                        fit[i] = fit0
+                    elif fit1 < fit0 and fit1 < fit[i]:
+                        positions[i] = RP[1]
+                        fit[i] = fit1
+
+                    # Update local best
+                    if fit[i]<lbest[i]: # Change this to > for calculating maximization
+                        lbest[i] = positions[i]
+                    else:
+                        fit[i]=lbest[i]
+                        positions[i] = lbest[i]
+
+                    # Update global best
+                    if fit[i] < best_fit:
+                        best_fit = fit[i]
+                        xbest - positions[i]
+
+
+    return best_fit
 
 
 # Example usage:
