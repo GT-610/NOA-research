@@ -16,7 +16,7 @@ cec_year = 2014 # Run which CEC function
 
 # Function number, from 1 to 30
 # Specify a list to select which functions to run
-func_ids=[1]
+func_ids=[6,8,10]
 
 
 # 运行 NOA 并保存结果
@@ -54,7 +54,7 @@ def ftest(x):
 # 定义的 cec 函数
 def cec_fun(x):
     funcs = opfunu.get_functions_by_classname(func_num)
-    func = funcs[0](ndim=dim)
+    func = funcs[0](ndim=D)
     F = func.evaluate(x)
     return F
 
@@ -73,4 +73,4 @@ if __name__ == '__main__':
         year = '2014'
         func_num = fun_name + year
         # run_and_save_results(func_num, cec_fun, lb, ub, D, run_time)
-        run_and_save_results('ftest', ftest, lb, ub, D, run_time)
+        run_and_save_results(func_num, cec_fun, lb, ub, D, run_time)
