@@ -22,7 +22,7 @@ func_ids=range(1,31)
 def run_and_save_results(func_num, fobj, lb, ub, dim, num_runs):
     all_runs_best_per_gen = []
     all_runs_final_best = []
-    for i in range(num_runs):
+    for i in range(1,num_runs+1):
         print(f'{func_num} 第 {i} 次开始')
         X_best, f_best, f_best_per_gen = nutcracker_optimizer(N, D, lb, ub, T, delta, Prp, fobj)
         all_runs_best_per_gen.append(f_best_per_gen)

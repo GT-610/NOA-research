@@ -1,5 +1,6 @@
 import random
 import numpy as np
+from levy import levy
 
 def initialize_population(N, D, lb, ub): # Tested OK
 
@@ -43,26 +44,26 @@ exploring other regions within the search space.
     positions = initialize_population(N, D, lb, ub) # Generate N numbers of nutcracker
     xbest = np.min(positions, axis=0)# Best nutcracker position (solution)
     best_fit=np.inf # Best fitness
-    lfit=np.inf * np.ones(N) # A vector to include the local-best position for each Nutcracker
+    lfit=np.inf * np.ones(N) # Local-best fitness for each Nutcracker
+    lbest = positions # Local-best solution for each Nutcracker as its current position at the beginning
     # 2D matrix to include two reference points
     RP=np.zeros((2,D))
+    fit = np.inf * np.ones(N) # Current fitness of every nutcracker
 
     # --- Evaluate ---
     for i in range(0,N):
-        print(positions[i])
         fit[i]=fobj(positions[i])
-        print(fit[i])
-        lbest[i]=fit[i] # Set the local best score for the ith Nutcracker as its current score
+        lfit[i]=fit[i] # Set the local best fitness for the ith Nutcracker as its current fitness
 
-        # Update the best score
+        # Update the best solution
         if fit[i]<best_fit:
             best_fit=fit[i]
             xbest = positions[i]
 
     # --- Begin ---
-    for t in range(0,T):
+    for t in range(1,T+1):
 
-        RL = 0.05*levy(N,dim,1.5) # Levy flight
+        RL = 0.05*levy(N,D,1.5) # Levy flight
         # Parameter in Eq.(3)
         l = np.random.rand()*(1-t/T)
         # Paramater in Eq. (11)
@@ -84,23 +85,27 @@ exploring other regions within the search space.
                 else:
                     mu = RL[0][0] # Levy flight
 
+                A, B, C = np.random.choice(N, 3, replace=False)
                 pa1 = ((T-t))/T
 
-                for j in range(0,D): # For every dimension
-                    A, B, C = np.random.choice(N, 3, replace=False)
-                    if np.random.rand() < pa1: # Exploration phase 1. phi < pa1 FIXME
+                if np.random.rand() < pa1: # Exploration phase 1. phi < pa1 FIXME
+                    r = np.random.rand()
+
+                    for j in range(0,D): # For every dimension
                         Xm_j = np.mean(positions[:, j])
+
+                        # Eq. (1)
                         if np.random.rand() >= np.random.rand():
                             if t<=T/2.0: # Global exploration
-                                positions[i][j] = Xm_j + RL[i][j] * (initial_positions[A][j] - initial_positions[B][j]) + mu * (r**2 * ub[j] - lb[j])
+                                positions[i][j] = Xm_j + RL[i][j] * (positions[A][j] - positions[B][j]) + mu * (r**2 * ub[j] - lb[j])
                     
                             else: # Explore around a random solution with probability δ
-                                positions[i][j] = positions[C][j] + mu * (np.random.rand() < delta) * (initial_positions[A][j] - initial_positions[B][j])  # Local exploration around a chosen solution
+                                positions[i][j] = positions[C][j] + mu * (positions[A][j] - positions[B][j]) + mu * (np.random.rand() < delta) * (r**2 * ub[j] - lb[j])  # Local exploration around a chosen solution
                     
                     else: 
                         # Following Eq.(3)
                         if np.random.rand() < np.random.rand(): # tau1 < tau2
-                            positions[i][j] = positions[i][j] + mu * (xbest[j] - positions[i][j]) * abs(RL[i][j]) + r1 * (positions[A][j]-positions[B][j])
+                            positions[i][j] = positions[i][j] + mu * (xbest[j] - positions[i][j]) * abs(RL[i][j]) + np.random.rand() * (positions[A][j]-positions[B][j])
                         elif np.random.rand() < np.random.rand(): # tau1 < tau3 
                             positions[i][j] = xbest[j] + mu * (positions[A][j]-positions[B][j])
                         else:
@@ -117,7 +122,7 @@ exploring other regions within the search space.
                 for j in range(0,D):
                     # The first RP, following Eq. (9)
                     if theta != np.pi / 2:
-                        RP[0][j] = positions[i][j] + (alpha * np.cos(theta) * (positions[A][j]-positions[B[j]]))
+                        RP[0][j] = positions[i][j] + (alpha * np.cos(theta) * (positions[A][j]-positions[B][j]))
                     else:
                         RP[0][j] = positions[i][j] + (alpha * np.cos(theta) * (positions[A][j]-positions[B[j]])) + alpha * RP[np.random.randint(2)][j]
                     
@@ -130,7 +135,7 @@ exploring other regions within the search space.
                 # Exceed RP return
                 for k in range(0,2):
                     if np.random.rand() < np.random.rand():
-                        for j in (0,D):
+                        for j in range(0,D):
                             if RP[k][j]>ub[j] or RP[k][j]<lb[j]:
                                 RP[k][j]=lb[j]+np.random.rand()*(ub[j]-lb[j])
 
@@ -156,13 +161,14 @@ exploring other regions within the search space.
                                 positions[i][j] = lb[j]+np.random.rand() * (ub[j]-lb[j])
 
                     # Evaluate for one nutcracker
-                    fit[i]=feval(fhd, positions[i],fobj)
+                    fit[i]=fobj(positions[i])
 
                     # Update local best
-                    if fit[i]<lbest[i]: # Change this to > for calculating maximization
+                    if fit[i]<lfit[i]: # Change this to > for calculating maximization
+                        lfit[i] = fit[i]
                         lbest[i] = positions[i]
                     else:
-                        fit[i]=lbest[i]
+                        fit[i]=lfit[i]
                         positions[i] = lbest[i]
 
                     # Update global best
@@ -172,8 +178,8 @@ exploring other regions within the search space.
 
                 else: # Exploitation phase 2 (recovery)
                     # Evaluation
-                    fit0 = feval(fhd,RP[0],fobj)
-                    fit1 = feval(fhd,RP[1],fobj)
+                    fit0 = fobj(RP[0])
+                    fit1 = fobj(RP[1])
 
                     # Judge which RP is closer to the cache
                     # Eq. (17)
@@ -185,16 +191,17 @@ exploring other regions within the search space.
                         fit[i] = fit1
 
                     # Update local best
-                    if fit[i]<lbest[i]: # Change this to > for calculating maximization
+                    if fit[i]<lfit[i]: # Change this to > for calculating maximization
+                        lfit[i] = fit[i]
                         lbest[i] = positions[i]
                     else:
-                        fit[i]=lbest[i]
+                        fit[i]=lfit[i]
                         positions[i] = lbest[i]
 
                     # Update global best
                     if fit[i] < best_fit:
                         best_fit = fit[i]
-                        xbest - positions[i]
+                        xbest = positions[i]
 
 
     return xbest, best_fit, 
