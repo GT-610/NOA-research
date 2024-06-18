@@ -1,3 +1,5 @@
 FESNOA.zip
 FESNOA/
 .vscode/
+.venv/
+__pycache__/

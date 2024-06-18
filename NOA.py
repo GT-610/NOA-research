@@ -23,36 +23,35 @@ def initialize_population(N, D, lb, ub): # Tested OK
     
     return initial_positions
 
-def nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, delta, Prp):
+def nutcracker_optimizer(N, D, lb, ub, T, delta, Prp, fobj):
 
     """
     Full Nutcracker Optimization Algorithm (NOA) process integrating both foraging-storage and cache-search-recovery strategies.
 
     Args:
         N, D, lb, ub (int, int, numpy.ndarray, numpy.ndarray): Same as previous definitions.
-        T (int): Evaluation times for the foraging-storage strategy.
-        Tmax (int): Maximum number of generations for the entire process.
-        pa1 (float): Probability threshold for switching between exploration and exploitation in the first strategy.
+        T (int): Maximum number of generations for the entire process.
         delta (float): Threshold for exploration decision in the second strategy.
         Prp (int) : a probability employed to determine the percentage of globally
 exploring other regions within the search space.
-
+        fobj (function): Test function.
     Returns:
         xbest_final (numpy.ndarray): The best position found after the entire NOA process.
     """
 
     # --- Initialize ---
     positions = initialize_population(N, D, lb, ub) # Generate N numbers of nutcracker
-    
-    xbest = np.min(positions, axis=0)# best position
-    best_fit=np.inf # Solution
-    lbest=np.ones(N,1) # Local-best position
+    xbest = np.min(positions, axis=0)# Best nutcracker position (solution)
+    best_fit=np.inf # Best fitness
+    lfit=np.inf * np.ones(N) # A vector to include the local-best position for each Nutcracker
     # 2D matrix to include two reference points
-    RP=np.zeros(2,D)
+    RP=np.zeros((2,D))
 
     # --- Evaluate ---
     for i in range(0,N):
-        fit[i]=feval(fhd, positions[i],fobj)
+        print(positions[i])
+        fit[i]=fobj(positions[i])
+        print(fit[i])
         lbest[i]=fit[i] # Set the local best score for the ith Nutcracker as its current score
 
         # Update the best score
@@ -198,15 +197,4 @@ exploring other regions within the search space.
                         xbest - positions[i]
 
 
-    return best_fit
-
-
-# Example usage:
-
-# N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta = ... # Define your parameters here
-
-# RP_matrix = ... # Define your reference points matrix here
-
-# best_solution = nutcracker_optimizer(N, D, lb, ub, T, Tmax, pa1, mu, tau1, tau2, tau3, delta, RP_matrix)
-
-# print("Best solution found:", best_solution)
+    return xbest, best_fit, 
