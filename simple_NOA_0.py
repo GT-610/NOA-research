@@ -122,9 +122,9 @@ def run_and_save_results(func_num, func, lb, ub, dim, num_runs):
 # 主程序入口
 if __name__ == '__main__':
     num_runs = 1
-    if_cec = 0
+    if_cec = 1
     if if_cec:
-        for i in range(1, 31):
+        for i in [1]:
             fun_name = 'F' + f'{i}'
             year = '2014'
             func_num = fun_name + year

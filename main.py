@@ -72,5 +72,5 @@ if __name__ == '__main__':
         fun_name = 'F' + f'{func_id}'
         year = '2014'
         func_num = fun_name + year
-        run_and_save_results("ftest", ftest, lb, ub, D, run_time)
-        # run_and_save_results(func_num, cec_fun, lb, ub, D, run_time)
+        # run_and_save_results("ftest", ftest, lb, ub, D, run_time)
+        run_and_save_results(func_num, cec_fun, lb, ub, D, run_time)
