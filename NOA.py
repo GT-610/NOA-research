@@ -97,22 +97,25 @@ exploring other regions within the search space.
                         Xm_j = np.mean(positions[:, j])
 
                         # Eq. (1)
-                        if np.random.rand() >= np.random.rand(): # tau1 >= tau2
-                            if t<=T/2.0: # Global exploration
-                                positions[i][j] = Xm_j + RL[i][j] * (positions[A][j] - positions[B][j]) + mu * (r**2 * ub[j] - lb[j])
+                        if t<=T/2.0: # Global exploration
+                            if np.random.rand() >= np.random.rand(): # tau1 >= tau2
+                                positions[i][j] = Xm_j + RL[i][j] * (positions[A][j] - positions[B][j]) + mu * r**2 * (ub[j] - lb[j])
                     
-                            else: # Explore around a random solution with probability δ
-                                positions[i][j] = positions[C][j] + mu * (positions[A][j] - positions[B][j]) + mu * (np.random.rand() < delta) * (r**2 * ub[j] - lb[j])  # Local exploration around a chosen solution
+                        else: # Explore around a random solution with probability δ
+                            if np.random.rand() >= np.random.rand(): # tau1 >= tau2
+                                positions[i][j] = positions[C][j] + mu * (positions[A][j] - positions[B][j]) + mu * (np.random.rand() < delta) * r**2 * (ub[j] - lb[j])  # Local exploration around a chosen solution
                     
                 else: # Exploitation phase 1
-                    for j in range(0,D):
                         # Following Eq.(3)
                         if np.random.rand() < np.random.rand(): # tau1 < tau2
-                            positions[i][j] = positions[i][j] + mu * (xbest[j] - positions[i][j]) * abs(RL[i][j]) + np.random.rand() * (positions[A][j]-positions[B][j])
+                            for j in range(0,D):
+                                positions[i][j] = positions[i][j] + mu * (xbest[j] - positions[i][j]) * abs(RL[i][j]) + np.random.rand() * (positions[A][j]-positions[B][j])
                         elif np.random.rand() < np.random.rand(): # tau1 < tau3 
-                            positions[i][j] = xbest[j] + mu * (positions[A][j]-positions[B][j])
+                            for j in range(0,D):
+                                positions[i][j] = xbest[j] + mu * (positions[A][j]-positions[B][j])
                         else:
-                            positions[i][j] = xbest[j] * l
+                            for j in range(0,D):
+                                positions[i][j] = xbest[j] * l
 
                 # Border check for nutcrackers
                 if np.random.rand() < np.random.rand():
