@@ -1,12 +1,11 @@
-# This is an EXPERIMENTAL GPU calculatation port of original NOA algorithm Python instance (main.py)
+# This is an EXPERIMENTAL GPU port of original NOA algorithm Python implemention (main.py)
 # It uses cupy instead of numpy
 # Tested on CUDA 12.4 on RTX 4060 Max-Q (8GB) and works
-# Test results show that it is not much faster than original CPU calculation one
-
+# Test results show that it is not much faster than original CPU calculation one (or even slower)
 
 import cupy as cp
 import opfunu
-from scipy.special import gamma
+from cupyx.scipy.special import gamma
 
 
 # Get CEC testing functions
@@ -56,18 +55,21 @@ def NOA(search_agents_no, max_iter, ub, lb, dim, fobj):
 
     while t < max_iter:
 
-        print(f"第 {t+1} 次")
+        print(f"t = {t}")
 
-        rl = 0.05 * levy(search_agents_no, dim, 1.5)
-        l = cp.random.rand() * (1 - t / max_iter)
-
+        rl = 0.05 * levy(search_agents_no, dim, 1.5) # Levy random number vector
+        l = cp.random.rand() * (1 - t / max_iter) # Parameter in Eq. (3)
+        
+        # Parameter in Eq. (11)
         if cp.random.rand() < cp.random.rand():
             a = (t / max_iter) ** (2 * 1 / (t + 1))
         else:
             a = (1 - (t / max_iter)) ** (2 * (t / max_iter))
 
-        if cp.random.rand() < cp.random.rand():
+        if cp.random.rand() < cp.random.rand(): # Foraging and storage
             mo = cp.mean(positions, axis=0)
+           
+            # Eq. (2)
             for i in range(search_agents_no):
                 if cp.random.rand() < cp.random.rand():
                     mu = cp.random.rand()
@@ -237,7 +239,7 @@ for i in range(1,31):
         fun_name = f'F{i}'
         # CEC year controlling parameters
         # Available: 2014, 2017, 2020
-        year = '2017'
+        year = '2014'
         func_num = fun_name + year
         dim = 30 # Dimension of the question
         lb = -100 * cp.ones(dim) # Lower boundary

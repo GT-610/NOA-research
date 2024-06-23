@@ -13,6 +13,7 @@ def cec_fun(x):
 def initialization(search_agents_no, dim, ub, lb):
     return np.random.uniform(lb, ub, (search_agents_no, dim))
 
+# Levy flight function
 def levy(n, m, beta):
     num = gamma(1 + beta) * np.sin(np.pi * beta / 2)
     den = gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2)
@@ -53,6 +54,7 @@ def NOA(search_agents_no, max_iter, ub, lb, dim, fobj):
         rl = 0.05 * levy(search_agents_no, dim, 1.5)
         l = np.random.rand() * (1 - t / max_iter)
 
+        # Parameter in Eq. (11)
         if np.random.rand() < np.random.rand():
             a = (t / max_iter) ** (2 * 1 / (t + 1))
         else:
@@ -60,6 +62,8 @@ def NOA(search_agents_no, max_iter, ub, lb, dim, fobj):
 
         if np.random.rand() < np.random.rand():
             mo = np.mean(positions, axis=0)
+            
+            # Eq. (2)
             for i in range(search_agents_no):
                 if np.random.rand() < np.random.rand():
                     mu = np.random.rand()
@@ -202,48 +206,63 @@ def NOA(search_agents_no, max_iter, ub, lb, dim, fobj):
 
     return best_nc, best_score, convergence_curve
 
-# 示例：定义一个测试函数，设置算法参数并运行
-SearchAgents_no = 200
-MaxFES = 200000
-RUN_NO = 5
-Fun_id = list(range(11, 20))
+# Parameters
+SearchAgents_no = 200 # Number of nutcrackers
+MaxFES = 1000000 # Evaluation times
+RUN_NO = 5 # Run how many times
 
+# Function numbers
+# Specify a list to select which functions to run
+# For CEC-2014 the list is from 1 to 30
+Fun_id = list(range(1, 31))
+# For CEC-2017 it is from 1 to 29
+# func_ids=range(1,30)
+# For CEC-2020 it is from 1 to 10
+# func_ids=range(1,11)
+
+# DEBUG: Just to test if the NOA algorithm is correct
 def fobj(x):
     return np.sum(x ** 2)
 
+# Calculate the average best for each generation
 average_convergence_curve = np.zeros(MaxFES)
 
 for i in range(11,20):
     results = []
     for j in range(RUN_NO):
-        fun_name = f'F{i}'  # 按需修改
-        year = '2020'  # 按需修改
+        fun_name = f'F{i}'
+        # CEC year controlling parameters
+        # Available: 2014, 2017, 2020
+        year = '2014'
         func_num = fun_name + year
-        dim = 30  # 维度，根据cec函数 选择对应维度
-        '''定义的 cec函数 '''
-        lb = -100 * np.ones(dim)
-        ub = 100 * np.ones(dim)
-        cec = 1
+        dim = 30 # Dimension of the question
+        lb = -100 * np.ones(dim) # Lower boundary
+        ub = 100 * np.ones(dim) # Upper boundary
+        cec = 1 # Whether to use CEC function
         if cec == 0:
             fun = fobj
             func_num = 'fobj'
         else:
             fun = cec_fun
 
-        print(f"CEC-{year} 函数 {i} 开始运行，第 {j+1} 次")
+        print(f"Function {i} of CEC-{year} begins for {j+1} time(s)")
         best_position, best_score, convergence_curve = NOA(SearchAgents_no, MaxFES, ub, lb, dim, fun)
         average_convergence_curve += convergence_curve
         results.append(convergence_curve[-1])
     average_convergence_curve /= (30 * RUN_NO)
 
+        # If "results/" does not exist, create it
+    if not os.path.exists("results"):
+        os.makedirs("results")
 
-    # 将平均convergence_curve逐行输出到文件
+    # Save the average best into the file
     with open(f'results/{func_num}_process.txt', 'w') as f:
         for value in average_convergence_curve:
             f.write(f'{value}\n')
 
+    # Save the result
     with open(f'results/{func_num}_results.txt', 'w') as f:
         for value in results:
             f.write(f'{value}\n')
 
-    print(f'{func_num}已保存到文件')
+    print(f'{func_num} saved to results/{func_num}_results.txt')

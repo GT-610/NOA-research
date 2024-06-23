@@ -1,7 +1,6 @@
 certifi==2024.6.2
 charset-normalizer==3.3.2
 contourpy==1.2.1
-cupy-cuda12x==13.2.0
 cycler==0.12.1
 fastrlock==0.8.2
 fonttools==4.53.0
